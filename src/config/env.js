@@ -16,7 +16,7 @@ module.exports = {
         : [process.env.CORS_ORIGIN.trim()];
     }
     // Fallback to localhost if CORS_ORIGIN is not set
-    return ['http://localhost:3000', 'http://localhost:5173'];
+    return ['http://localhost:3000', 'http://localhost:5173', 'https://spygamefrontend.onrender.com'];
   })(),
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
   rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
