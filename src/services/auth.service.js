@@ -4,7 +4,7 @@ const { generateToken } = require('../utils/jwt');
 const { generateUserId } = require('../utils/id-generator');
 const logger = require('../config/logger');
 
-const register = async (username, email, password) => {
+const register = async (username, email, password, avatar = null) => {
   try {
     // Check if user already exists
     const existingUser = await User.findOne({
@@ -24,6 +24,7 @@ const register = async (username, email, password) => {
       username,
       email,
       password: hashedPassword,
+      avatar: avatar || null,
       isGuest: false,
     });
 
@@ -35,6 +36,7 @@ const register = async (username, email, password) => {
         userId: user.userId,
         username: user.username,
         email: user.email,
+        avatar: user.avatar,
         isGuest: user.isGuest,
       },
       token,
@@ -84,12 +86,13 @@ const login = async (email, password) => {
   }
 };
 
-const createGuest = async (username) => {
+const createGuest = async (username, avatar = null) => {
   try {
     // Create guest user
     const user = await User.create({
       userId: generateUserId(),
       username,
+      avatar: avatar || null,
       isGuest: true,
       isOnline: true,
     });
@@ -101,6 +104,7 @@ const createGuest = async (username) => {
       user: {
         userId: user.userId,
         username: user.username,
+        avatar: user.avatar,
         isGuest: user.isGuest,
       },
       token,

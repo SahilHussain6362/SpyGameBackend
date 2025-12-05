@@ -10,9 +10,10 @@ const voiceSocket = require('./voice.socket');
 let io;
 
 const initializeSocket = (server) => {
+  const { corsOrigin } = require('../config/env');
   io = new Server(server, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+      origin: corsOrigin,
       credentials: true,
     },
   });
@@ -23,25 +24,52 @@ const initializeSocket = (server) => {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
       if (!token) {
-        // Allow guest connections
+        // Allow guest connections without token
         socket.user = null;
+        socket.userId = null;
         return next();
       }
 
-      const decoded = verifyToken(token);
-      const user = await User.findById(decoded.userId).select('-password');
+      try {
+        const decoded = verifyToken(token);
+        
+        // Verify token has required fields
+        if (!decoded || !decoded.userId) {
+          logger.debug('Socket token missing userId, allowing as guest');
+          socket.user = null;
+          socket.userId = null;
+          return next();
+        }
 
-      if (user) {
-        socket.user = user;
-        socket.userId = user._id.toString();
-      } else {
+        const user = await User.findById(decoded.userId).select('-password');
+
+        if (user) {
+          socket.user = user;
+          socket.userId = user._id.toString();
+          logger.debug(`Socket authenticated: ${user.username} (${socket.id})`);
+        } else {
+          logger.debug(`Socket token valid but user not found: ${decoded.userId}`);
+          socket.user = null;
+          socket.userId = null;
+        }
+      } catch (tokenError) {
+        // Token is invalid/expired - allow as guest but don't log as error
+        // This is expected behavior for expired tokens or invalid tokens
+        if (tokenError.message.includes('expired')) {
+          logger.debug(`Socket token expired, allowing as guest: ${socket.id}`);
+        } else {
+          logger.debug(`Socket token invalid, allowing as guest: ${socket.id}`);
+        }
         socket.user = null;
+        socket.userId = null;
       }
 
       next();
     } catch (error) {
-      logger.error('Socket authentication error:', error);
+      // Only log unexpected errors
+      logger.error('Unexpected socket authentication error:', error);
       socket.user = null;
+      socket.userId = null;
       next();
     }
   });

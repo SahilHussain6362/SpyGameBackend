@@ -3,8 +3,8 @@ const logger = require('../../config/logger');
 
 const register = async (req, res, next) => {
   try {
-    const { username, email, password } = req.body;
-    const result = await authService.register(username, email, password);
+    const { username, email, password, avatar } = req.body;
+    const result = await authService.register(username, email, password, avatar);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -33,8 +33,8 @@ const login = async (req, res, next) => {
 
 const createGuest = async (req, res, next) => {
   try {
-    const { username } = req.body;
-    const result = await authService.createGuest(username);
+    const { username, avatar } = req.body;
+    const result = await authService.createGuest(username, avatar);
 
     res.status(201).json({
       message: 'Guest user created',
