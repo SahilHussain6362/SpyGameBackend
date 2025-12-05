@@ -2,6 +2,7 @@ const { Server } = require('socket.io');
 const { verifyToken } = require('../utils/jwt');
 const User = require('../models/user.model');
 const logger = require('../config/logger');
+const { corsOrigin } = require('../config/env');
 const roomSocket = require('./room.socket');
 const gameSocket = require('./game.socket');
 const chatSocket = require('./chat.socket');
