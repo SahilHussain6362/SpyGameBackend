@@ -119,7 +119,14 @@ const joinRoom = async (roomCode, userId, username, socketId, asSpectator = fals
     }
 
     await room.save();
-    return room.populate('host players.userId spectators.userId', 'userId username avatar');
+    
+    // Fully populate the room with user data
+    const populatedRoom = await Room.findOne({ roomCode })
+      .populate('host', 'userId username avatar')
+      .populate('players.userId', 'userId username avatar')
+      .populate('spectators.userId', 'userId username avatar');
+    
+    return populatedRoom;
   } catch (error) {
     logger.error('Join room error:', error);
     throw error;
@@ -174,7 +181,13 @@ const togglePlayerReady = async (roomCode, userId, isReady) => {
     player.isReady = isReady;
     await room.save();
 
-    return room.populate('host players.userId', 'userId username avatar');
+    // Fully populate the room with user data
+    const populatedRoom = await Room.findOne({ roomCode })
+      .populate('host', 'userId username avatar')
+      .populate('players.userId', 'userId username avatar')
+      .populate('spectators.userId', 'userId username avatar');
+    
+    return populatedRoom;
   } catch (error) {
     logger.error('Toggle player ready error:', error);
     throw error;
