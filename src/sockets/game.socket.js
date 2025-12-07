@@ -21,7 +21,9 @@ const gameSocket = (io, socket) => {
       const room = await roomService.getRoomByCode(roomCode);
 
       // Check if user is host
-      if (room.host.toString() !== socket.userId) {
+      // Handle both populated (object) and unpopulated (ObjectId) host
+      const hostId = room.host._id ? room.host._id.toString() : room.host.toString();
+      if (hostId !== socket.userId) {
         return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Only host can start the game' });
       }
 

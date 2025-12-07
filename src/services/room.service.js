@@ -162,7 +162,9 @@ const leaveRoom = async (roomCode, userId) => {
     room.spectators = room.spectators.filter((s) => s.userId.toString() !== userId.toString());
 
     // If host left and there are players, assign new host
-    if (room.host.toString() === userId.toString() && room.players.length > 0) {
+    // Handle both populated (object) and unpopulated (ObjectId) host
+    const hostId = room.host._id ? room.host._id.toString() : room.host.toString();
+    if (hostId === userId.toString() && room.players.length > 0) {
       room.host = room.players[0].userId;
     }
 
