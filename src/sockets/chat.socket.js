@@ -17,11 +17,23 @@ const chatSocket = (io, socket) => {
         return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Authentication required' });
       }
 
+      if (!roomCode) {
+        return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Room code is required' });
+      }
+
+      // Ensure socket is in the room
+      const rooms = Array.from(socket.rooms);
+      if (!rooms.includes(roomCode)) {
+        logger.warn(`Socket ${socket.id} not in room ${roomCode}, joining now`);
+        socket.join(roomCode);
+      }
+
       // Save message to database
+      // Use socket.user._id (ObjectId) instead of socket.userId (string) for proper MongoDB storage
       const savedMessage = await Message.create({
         roomId: roomCode,
         sender: {
-          userId: socket.userId,
+          userId: socket.user._id, // Use ObjectId, not string
           username: socket.user.username,
         },
         message: message.trim(),
@@ -30,10 +42,18 @@ const chatSocket = (io, socket) => {
         roundNumber: roundNumber || null,
       });
 
-      // Broadcast message
-      io.to(roomCode).emit(SOCKET_EVENTS.MESSAGE_RECEIVED, {
-        message: savedMessage,
+      // Convert to plain object and ensure sender.userId is a string for frontend compatibility
+      const messageData = savedMessage.toObject();
+      messageData.sender = {
+        userId: messageData.sender.userId.toString(),
+        username: messageData.sender.username,
+      };
+
+      // Broadcast message to all sockets in the room EXCEPT the sender
+      socket.to(roomCode).emit(SOCKET_EVENTS.MESSAGE_RECEIVED, {
+        message: messageData,
       });
+
     } catch (error) {
       logger.error('Send message socket error:', error);
       socket.emit(SOCKET_EVENTS.ERROR, { message: error.message });
