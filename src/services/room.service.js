@@ -3,7 +3,7 @@ const { generateRoomId, generateRoomCode } = require('../utils/id-generator');
 const logger = require('../config/logger');
 const GAME_CONSTANTS = require('../constants/game.constants');
 
-const createRoom = async (hostId, settings = {}) => {
+const createRoom = async (hostId, settings = {}, hostUsername = null, hostSocketId = null) => {
   try {
     let roomCode;
     let isUnique = false;
@@ -17,11 +17,23 @@ const createRoom = async (hostId, settings = {}) => {
       }
     }
 
+    // Prepare players array - add host as first player if username is provided
+    const players = [];
+    if (hostUsername) {
+      players.push({
+        userId: hostId,
+        socketId: hostSocketId || null,
+        username: hostUsername,
+        isReady: false,
+        joinedAt: new Date(),
+      });
+    }
+
     const room = await Room.create({
       roomId: generateRoomId(),
       roomCode,
       host: hostId,
-      players: [],
+      players,
       spectators: [],
       settings: {
         maxPlayers: settings.maxPlayers || GAME_CONSTANTS.MAX_PLAYERS,
@@ -32,7 +44,7 @@ const createRoom = async (hostId, settings = {}) => {
       status: 'waiting',
     });
 
-    return room.populate('host', 'userId username avatar');
+    return room.populate('host players.userId', 'userId username avatar');
   } catch (error) {
     logger.error('Create room error:', error);
     throw error;
@@ -88,11 +100,20 @@ const joinRoom = async (roomCode, userId, username, socketId, asSpectator = fals
     }
 
     // Check if already in room
-    const isPlayer = room.players.some((p) => p.userId.toString() === userId.toString());
-    const isSpectator = room.spectators.some((s) => s.userId.toString() === userId.toString());
+    const existingPlayer = room.players.find((p) => p.userId.toString() === userId.toString());
+    const existingSpectator = room.spectators.find((s) => s.userId.toString() === userId.toString());
 
-    if (isPlayer || isSpectator) {
-      throw new Error('Already in room');
+    // If user is already in room, just update their socketId (e.g., they joined via API and now connecting via socket)
+    if (existingPlayer) {
+      existingPlayer.socketId = socketId;
+      await room.save();
+      return room.populate('host players.userId spectators.userId', 'userId username avatar');
+    }
+
+    if (existingSpectator) {
+      existingSpectator.socketId = socketId;
+      await room.save();
+      return room.populate('host players.userId spectators.userId', 'userId username avatar');
     }
 
     if (asSpectator) {
